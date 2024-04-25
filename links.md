@@ -8,6 +8,7 @@
 - https://zenodo.org/records/1321278
 - https://app.pollinatorhub.eu/
 - https://research.google.com/audioset/dataset/bee_wasp_etc.html
+- https://beehealthdata.org/
 
 ## Weitere Infos
 - https://community.hiveeyes.org/t/sound-samples-and-basic-analysis-hive-with-queen-vs-queenless/399
