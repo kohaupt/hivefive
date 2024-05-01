@@ -1,0 +1,12 @@
+# Weitere Infos zum Datensatz
+
+## Fragen von Kaggle
+
+1.) Firstly, could you please tell me how was it recorded whether the queen bee has been accepted or rejected, or whether it was present or absent from the hive?
+  - To confirm whether the queen was accepted or rejected, I conducted a daily hive inspection. I observed the bees’ reaction towards the queen in the cage: Are they attempting to sting or ball (suffocate) her? Are they calm or excited? If there are 2+ layers of bees around the cage, it’s an indication that they are aggressive and hostile towards the queen. In the 24-hour period that the queen’s status changes from rejected to accepted (between hive inspections), there was ambiguity around the exact time that the queen became accepted. As a result, I discarded the data from this uncertain period.
+
+2.) Could you please tell me how does the dataset relate to colony collapse disorder? Because I don't see any variable which classifies whether the hive has faced colony collapse disorder or not.
+  - I don't believe I ever noted that the dataset related to colony collapse disorder. However, I can describe how it could be indirectly related. Colony collapse disorder, a phenomenon that occurs when the majority of bees in a colony mysteriously disappear, has been on the decline in recent years. Initially, it was very concerning for scientists and beekeepers because bees were dying, seemingly without reason. Despite it being not as severe now, overall colony loss is still a major concern to beekeepers, and it has been reported that queen failure -- when a colony is headed by a queen bee that is infertile or weak -- has been consistently identified as one of the top four causes of colony mortality, annually, since 2009 (from the annual study conducted by the Canadian Association of Professional Apiculturists). This dataset records the difference in sound between queen states, addressing the widespread issue of queen failure.
+  
+3.) Lastly, is there any data on when were these hives affected by pesticides, or by varroa mite?
+  - No, I didn't collect data on varroa mites or pesticide exposure for this dataset. In fact, pesticide exposure is quite difficult to track, especially since the data was mostly collected on suburban backyard beehives. It's near impossible to know whether nearby residences treat their gardens with chemical or organic pesticides, and even where the bees were visiting, since they can fly 3-4 miles just to collect pollen and nectar.
