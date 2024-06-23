@@ -3,38 +3,39 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
+from torchinfo import summary
 from datetime import datetime
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from model import CNNModel
 import numpy as np
 from hive_dataset import HiveDataset
-from hive_dataset_npy import HiveDatasetNPY
 import os
 
 import sys
-sys.path.append("D:\\Software-Projekte\\Uni\\ds_audio\\src\\")
+from pathlib import Path
+# Allow imports from the src directory
+sys.path.append(
+    str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]))
 import config
 
 class Train():
 
     def __init__(self):
         print(config.fmax)
-        dataset = HiveDatasetNPY(metadata_path=os.path.join(config.TARGET_DIR, "bee_hive_metadata.npy"), img_dir=os.path.join(config.TARGET_DIR, "bee_hive_mel_specs.npy"), classes=[config.TARGET_FEATURE], img_mode='RGB')
+        dataset = HiveDataset(metadata_path=config.PROCESSED_METADATA_FILE, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
         self.training_dataloader = DataLoader(dataset=dataset, batch_size=1, shuffle=True)
 
-        self.loss_fn = nn.BCELoss()
-
-        input = nn.Sigmoid()(torch.randn(5, requires_grad=True))
-        target = torch.tensor([0, 0, 1, 0, 1], dtype=torch.float)
-        self.loss_fn(input, target)
-        self.loss_fn = nn.BCELoss()
-
         self.model = CNNModel()
+        print(summary(self.model))
+
+        self.loss_fn = nn.BCELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0005)
 
     def train_one_epoch(self, epoch_index, tb_writer, device="cpu"):
         running_loss = 0.
         avg_loss = 0.
+
+        device = torch.device(device)
 
         for i, data in enumerate(tqdm(self.training_dataloader)):
             
@@ -77,7 +78,7 @@ class Train():
 
         best_vloss = np.inf
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Training will happen on {device}.")
 
         for epoch in range(EPOCHS):
@@ -85,7 +86,7 @@ class Train():
 
             # Make sure gradient tracking is on, and do a pass over the data
             self.model.train(True)
-            avg_loss = self.train_one_epoch(self, epoch_number, writer, device)
+            avg_loss = self.train_one_epoch(epoch_number, writer, device)
 
             running_vloss = 0.0
             # Set the model to evaluation mode, disabling dropout and using population
@@ -115,11 +116,10 @@ class Train():
             # Track best performance, and save the model's state
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
-                model_path = f"model_{timestamp}_{epoch_number}"
+                model_path = os.path.join(config.MODEL_INTERIM_PATH, f"model_{timestamp}_{epoch_number}.pt")
                 torch.save(self.model.state_dict(), model_path)
 
             epoch_number += 1
-
 
 
 trainer = Train()

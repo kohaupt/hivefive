@@ -1,8 +1,7 @@
-import os
 import pandas as pd
-import torch
 from torch.utils.data import Dataset
-from torchvision.io import read_image, ImageReadMode
+import torch
+import numpy as np
 
 class HiveDataset(Dataset):
     """
@@ -27,60 +26,48 @@ class HiveDataset(Dataset):
 
     def __init__(
         self,
-        metadata: pd.DataFrame,
-        img_dir: str,
-        classes: list,
-        img_mode: str = "RGB",
-        transform=None,
-        target_transform=None,
+        metadata_path: str,
+        mel_spec_path: str,
+        target_feature: str,
     ):
-        self.img_metadata = metadata
-        self.img_dir = img_dir
-        self.classes = classes
-        if img_mode.lower() == "rgb":
-            self.img_mode = ImageReadMode.RGB
-        elif img_mode.lower() == "gray":
-            self.img_mode = ImageReadMode.GRAY
-        else:
-            raise ValueError("Unknown image mode (img_mode), must be GRAY or RGB.")
-        self.transform = transform
-        self.target_transform = target_transform
+        metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
+       'hive pressure', 'weather temp', 'weather humidity', 'weather pressure',
+       'wind speed', 'gust speed', 'weatherID', 'cloud coverage', 'rain',
+       'lat', 'long', 'file name', 'queen presence', 'queen acceptance',
+       'frames', 'target', 'time', 'queen status']
+        metadata = np.load(metadata_path, allow_pickle=True)
+        metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
+        self.metadata = metadata_df
+
+        self.target = metadata_df[target_feature].values
+
+        self.mel_specs = np.load(mel_spec_path)
 
     def __len__(self):
         """Returns the total number of samples in the dataset."""
-        # return len(glob.glob(f'{self.img_dir}*.png'))
-        return len(self.img_metadata)
+        return len(self.metadata)
 
     def __getitem__(self, idx):
-        """Retrieves the image and its label at the specified index `idx`.
+        """Retrieves the mel_spec and its label at the specified index `idx`.
 
         Parameters:
         - idx (int): Index of the item to retrieve.
 
         Returns:
-        - tuple: (image, label) where image is the transformed image tensor, and label is the corresponding label tensor.
+        - tuple: (mel_spec, label) where image is the mel_spec and label is the target(s).
         """
 
-        # Construct the full path to the image file
-        raw_filename = self.img_metadata.iloc[idx, 16]
-        raw_filename = raw_filename.split('.')[0]
-        # print(f"{raw_filename}*.png")
+        mel_spec = torch.tensor(self.mel_specs[idx]).float()
+        # Bring into shape (1, 128, 5168) for CNN
+        mel_spec = mel_spec.unsqueeze(0)
 
-        # imglist = glob.glob(raw_filename + '*.png')
-        # img_path = os.path.join(self.img_dir, imglist[0])
+        # TODO: Do transformations here (e.g., data augmentation, normalization, etc.)
+        
+        # One hot encode the target
+        # TODO: Is this necessary?
+        # TODO: Move to preprocessing step?
+        label = torch.tensor(self.target[idx]).float()
+        encoded_label = torch.zeros(4)
+        encoded_label[int(label)] = 1
 
-        img_path = os.path.join(self.img_dir, raw_filename + '__segment0.png')
-
-        # Read the image file
-        image = read_image(img_path, mode=self.img_mode)
-
-        # Extract label(s) for the current image
-        label = torch.tensor(self.img_metadata[self.classes].iloc[idx, :], dtype=torch.float32)
-
-        # Apply transformations to the image and label if any
-        if self.transform:
-            image = self.transform(image)
-        if self.target_transform:
-            label = self.target_transform(label)
-
-        return image, label
+        return mel_spec, encoded_label

@@ -1,6 +1,12 @@
 # Python venv
 venv/
 
+# Trainer runs
+runs/
+
+# Interim model files
+models/interim/
+
 # Data is immutable, so ignore data directories
 data/
 
