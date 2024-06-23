@@ -1,10 +1,8 @@
-import os
 import pandas as pd
-import torch
 from torch.utils.data import Dataset
 import numpy as np
 
-class HiveDataset(Dataset):
+class HiveDatasetNPY(Dataset):
     """
     A custom PyTorch Dataset class for chest X-Ray images.
 
