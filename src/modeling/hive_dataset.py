@@ -1,6 +1,7 @@
 import pandas as pd
 from torch.utils.data import Dataset
 import torch
+import os
 import numpy as np
 
 class HiveDataset(Dataset):
@@ -28,7 +29,8 @@ class HiveDataset(Dataset):
         self,
         # metadata_path: str,
         metadata_df: pd.DataFrame,
-        mel_spec_path: str,
+        # mel_spec_path: str,
+        processed_data_path: str,
         target_feature: str,
     ):
         #  metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
@@ -39,10 +41,13 @@ class HiveDataset(Dataset):
         #  metadata = np.load(metadata_path, allow_pickle=True)
         #  metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
 
-        self.metadata = metadata_df
+        self.metadata = metadata_df.reset_index()
         self.target = metadata_df[target_feature].values
+        self.processed_data_path = processed_data_path
 
-        self.mel_specs = np.load(mel_spec_path)
+        print(self.metadata.shape)
+
+        # self.mel_specs = np.load(mel_spec_path)
 
     def __len__(self):
         """Returns the total number of samples in the dataset."""
@@ -57,9 +62,16 @@ class HiveDataset(Dataset):
         Returns:
         - tuple: (mel_spec, label) where image is the mel_spec and label is the target(s).
         """
+        # Load mel_spec
+        print(self.metadata.iloc[0]["file name"].replace(".wav", ".npy"))
+        mel_spec_path = os.path.join(self.processed_data_path, self.metadata.iloc[0]["file name"].replace(".wav", ".npy"))
+        mel_spec = np.load(mel_spec_path)
 
-        mel_spec = torch.tensor(self.mel_specs[idx]).float()
+        print(mel_spec.shape)
+
+        mel_spec = torch.tensor(mel_spec).float()
         # Bring into shape (1, 128, 5168) for CNN
+        # (channels, height, width)
         mel_spec = mel_spec.unsqueeze(0)
 
         # TODO: Do transformations here (e.g., data augmentation, normalization, etc.)

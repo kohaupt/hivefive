@@ -35,13 +35,13 @@ class Train():
         metadata_train, metadata_test = train_test_split(metadata_df, train_size=0.7, shuffle=True, random_state=42)
         metadata_val, metadata_test = train_test_split(metadata_test, train_size=0.5, shuffle=True, random_state=42)
 
-        # dataset = HiveDataset(metadata_path=config.PROCESSED_METADATA_FILE, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
-        train_dataset = HiveDataset(metadata_df=metadata_train, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
-        self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=True)
-        val_dataset = HiveDataset(metadata_df=metadata_val, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
-        self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=8, shuffle=True)
-        test_dataset = HiveDataset(metadata_df=metadata_test, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
-        self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=8, shuffle=True)
+        # dataset = HiveDataset(metadata_path=config.PROCESSED_METADATA_FILE, processed_data_path=config.PROCESSED_DATA_PATH, target_feature=config.TARGET_FEATURE)
+        train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.PROCESSED_DATA_PATH, target_feature=config.TARGET_FEATURE)
+        self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=1, shuffle=True)
+        val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.PROCESSED_DATA_PATH, target_feature=config.TARGET_FEATURE)
+        self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=1, shuffle=True)
+        test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.PROCESSED_DATA_PATH, target_feature=config.TARGET_FEATURE)
+        self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True)
 
         self.model = CNNModel()
         if torch.cuda.is_available():

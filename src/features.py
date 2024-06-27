@@ -69,14 +69,18 @@ def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, proce
         # audio_data = librosa.resample(y=audio_data, orig_sr=22050, target_sr=config.sampling_rate)
         mel_spectrogram = create_mel_spectrogram_from_audio_data(audio_data, hop_length=256)
 
-        mel_specs.append(mel_spectrogram)
+        mel_spec_array = np.array(mel_spectrogram)
+        path_mel_spec_file = os.path.join(processed_data_path, os.path.basename(file).replace('.wav', ''))
+        np.save(path_mel_spec_file, mel_spec_array)
+
+        # mel_specs.append(mel_spectrogram)
         metadatas.append(metadata)
 
     # Write the data to two .npy files
-    mel_specs = np.array(mel_specs)
+    # mel_specs = np.array(mel_specs, dtype=np.float16)
     metadata = np.array(metadatas)
     
-    np.save(packed_np_path_mel_specs, mel_specs)
+    # np.save(packed_np_path_mel_specs, mel_specs)
     np.save(packed_np_path_metadata, metadata)
 
 
