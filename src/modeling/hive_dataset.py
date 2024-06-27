@@ -26,19 +26,20 @@ class HiveDataset(Dataset):
 
     def __init__(
         self,
-        metadata_path: str,
+        # metadata_path: str,
+        metadata_df: pd.DataFrame,
         mel_spec_path: str,
         target_feature: str,
     ):
-        metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
-       'hive pressure', 'weather temp', 'weather humidity', 'weather pressure',
-       'wind speed', 'gust speed', 'weatherID', 'cloud coverage', 'rain',
-       'lat', 'long', 'file name', 'queen presence', 'queen acceptance',
-       'frames', 'target', 'time', 'queen status']
-        metadata = np.load(metadata_path, allow_pickle=True)
-        metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
-        self.metadata = metadata_df
+        #  metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
+        # 'hive pressure', 'weather temp', 'weather humidity', 'weather pressure',
+        # 'wind speed', 'gust speed', 'weatherID', 'cloud coverage', 'rain',
+        # 'lat', 'long', 'file name', 'queen presence', 'queen acceptance',
+        # 'frames', 'target', 'time', 'queen status']
+        #  metadata = np.load(metadata_path, allow_pickle=True)
+        #  metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
 
+        self.metadata = metadata_df
         self.target = metadata_df[target_feature].values
 
         self.mel_specs = np.load(mel_spec_path)

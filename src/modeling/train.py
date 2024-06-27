@@ -10,6 +10,8 @@ from model import CNNModel
 import numpy as np
 from hive_dataset import HiveDataset
 import os
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 import sys
 from pathlib import Path
@@ -21,14 +23,32 @@ import config
 class Train():
 
     def __init__(self):
-        print(config.fmax)
-        dataset = HiveDataset(metadata_path=config.PROCESSED_METADATA_FILE, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
-        self.training_dataloader = DataLoader(dataset=dataset, batch_size=1, shuffle=True)
+        metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
+        'hive pressure', 'weather temp', 'weather humidity', 'weather pressure',
+        'wind speed', 'gust speed', 'weatherID', 'cloud coverage', 'rain',
+        'lat', 'long', 'file name', 'queen presence', 'queen acceptance',
+        'frames', 'target', 'time', 'queen status']
+        metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
+        metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
+
+        # Train, test, val split
+        metadata_train, metadata_test = train_test_split(metadata_df, train_size=0.7, shuffle=True, random_state=42)
+        metadata_val, metadata_test = train_test_split(metadata_test, train_size=0.5, shuffle=True, random_state=42)
+
+        # dataset = HiveDataset(metadata_path=config.PROCESSED_METADATA_FILE, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
+        train_dataset = HiveDataset(metadata_df=metadata_train, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
+        self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=8, shuffle=True)
+        val_dataset = HiveDataset(metadata_df=metadata_val, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
+        self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=8, shuffle=True)
+        test_dataset = HiveDataset(metadata_df=metadata_test, mel_spec_path=config.PROCESSED_MEL_SPEC_FILE, target_feature=config.TARGET_FEATURE)
+        self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=8, shuffle=True)
 
         self.model = CNNModel()
+        if torch.cuda.is_available():
+            self.model.cuda()
         print(summary(self.model))
 
-        self.loss_fn = nn.BCELoss()
+        self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0005)
 
     def train_one_epoch(self, epoch_index, tb_writer, device="cpu"):
@@ -38,22 +58,24 @@ class Train():
         device = torch.device(device)
 
         for i, data in enumerate(tqdm(self.training_dataloader)):
-            
             # Every data instance is an input + label pair
             inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)
 
             # Zero your gradients for every batch!
             self.optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs = self.model(inputs.to(device))
+            outputs = self.model(inputs)
 
             # Compute the loss and its gradients
             loss = self.loss_fn(outputs, labels)
             loss.backward()
 
             # Adjust learning weights
+            # TODO: Check if this actually updates the weights!
             self.optimizer.step()
+            print(list(self.model.parameters()))
 
             # Gather data and report
             running_loss += loss.item()
@@ -74,7 +96,7 @@ class Train():
         writer = SummaryWriter('runs/cnn_trainer_{}'.format(timestamp))
         epoch_number = 0
 
-        EPOCHS = 2
+        EPOCHS = 3
 
         best_vloss = np.inf
 
@@ -88,6 +110,7 @@ class Train():
             self.model.train(True)
             avg_loss = self.train_one_epoch(epoch_number, writer, device)
 
+            # TODO: Move this to a separate function
             running_vloss = 0.0
             # Set the model to evaluation mode, disabling dropout and using population
             # statistics for batch normalization.
@@ -95,11 +118,12 @@ class Train():
 
             # Disable gradient computation and reduce memory consumption.
             with torch.no_grad():
-                for i, vdata in enumerate(self.training_dataloader):
+                for i, vdata in enumerate(self.validation_dataloader):
                     if i > 10:
                         break
                     vinputs, vlabels = vdata
-                    voutputs = self.model(vinputs.to(device))
+                    vinputs, vlabels = vinputs.to(device), vlabels.to(device)
+                    voutputs = self.model(vinputs)
                     vloss = self.loss_fn(voutputs, vlabels)
                     running_vloss += vloss
 
@@ -122,5 +146,5 @@ class Train():
             epoch_number += 1
 
 
-trainer = Train()
-trainer.train_cnn()
+# trainer = Train()
+# trainer.train_cnn()
