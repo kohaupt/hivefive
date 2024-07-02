@@ -3,6 +3,7 @@ import numpy as np
 import librosa
 import pandas as pd
 import config
+from sklearn.preprocessing import MinMaxScaler
 
 
 def extract_target_from_metadata():
@@ -30,7 +31,7 @@ def create_mel_spectrogram_from_audio_data(audio_data: np.ndarray, sampling_rate
     return mel_spectrogram
 
 
-def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, processed_data_path=config.PROCESSED_DATA_PATH, metadata_file_path=config.METADATA_FILE):
+def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, metadata_file_path=config.METADATA_FILE):
     """Preprocesses the audio files and metadata and packs them into a .npy file.
 
     Parameters:
@@ -68,6 +69,12 @@ def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, proce
             file, duration=config.duration_of_audio_file, sr=None)
         # audio_data = librosa.resample(y=audio_data, orig_sr=22050, target_sr=config.sampling_rate)
         mel_spectrogram = create_mel_spectrogram_from_audio_data(audio_data, hop_length=256)
+
+        # Normalize the mel spectrogram
+        scaler = MinMaxScaler()
+        scaler.fit(mel_spectrogram)
+        mel_spectrogram = scaler.transform(mel_spectrogram)
+        print("Mel spec min:", np.min(mel_spectrogram), "Mel spec max:", np.max(mel_spectrogram))
 
         mel_spec_array = np.array(mel_spectrogram)
         path_mel_spec_file = os.path.join(processed_data_path, os.path.basename(file).replace('.wav', ''))

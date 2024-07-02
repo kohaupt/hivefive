@@ -32,6 +32,8 @@ class HiveDataset(Dataset):
         # mel_spec_path: str,
         processed_data_path: str,
         target_feature: str,
+        transform=None,
+        fake_rgb=False
     ):
         #  metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
         # 'hive pressure', 'weather temp', 'weather humidity', 'weather pressure',
@@ -44,8 +46,8 @@ class HiveDataset(Dataset):
         self.metadata = metadata_df.reset_index()
         self.target = metadata_df[target_feature].values
         self.processed_data_path = processed_data_path
-
-        print(self.metadata.shape)
+        self.transform = transform
+        self.fake_rgb = fake_rgb
 
         # self.mel_specs = np.load(mel_spec_path)
 
@@ -63,18 +65,21 @@ class HiveDataset(Dataset):
         - tuple: (mel_spec, label) where image is the mel_spec and label is the target(s).
         """
         # Load mel_spec
-        print(self.metadata.iloc[0]["file name"].replace(".wav", ".npy"))
         mel_spec_path = os.path.join(self.processed_data_path, self.metadata.iloc[0]["file name"].replace(".wav", ".npy"))
         mel_spec = np.load(mel_spec_path)
-
-        print(mel_spec.shape)
 
         mel_spec = torch.tensor(mel_spec).float()
         # Bring into shape (1, 128, 5168) for CNN
         # (channels, height, width)
         mel_spec = mel_spec.unsqueeze(0)
 
+        if(self.fake_rgb):
+            # Fake 3 channels:
+            mel_spec = torch.stack([mel_spec[0], mel_spec[0], mel_spec[0]], 0)
+
         # TODO: Do transformations here (e.g., data augmentation, normalization, etc.)
+        if(self.transform):
+            mel_spec = self.transform(mel_spec)
         
         # One hot encode the target
         # TODO: Is this necessary?

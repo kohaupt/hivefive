@@ -42,5 +42,6 @@ class CNNModel(nn.Module):
         x = self.flatten(x)
         x = F.relu(self.fc1(x))
         # x = torch.sigmoid(self.fc2(x))
-        x = torch.softmax(self.fc2(x), dim=1, dtype=torch.float32)
+        # x = torch.log_softmax(self.fc2(x), dim=1, dtype=torch.float32)
+        x = self.fc2(x)
         return x
