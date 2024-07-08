@@ -1,47 +1,38 @@
 import pandas as pd
 from torch.utils.data import Dataset
 import torch
+import os
 import numpy as np
+import torch.nn.functional as F
 
 class HiveDataset(Dataset):
     """
-    A custom PyTorch Dataset class for chest X-Ray images.
-
-    This class is designed to handle X-Ray image datasets, supporting both grayscale
-    and RGB image modes. It allows for on-the-fly transformations of the images and labels,
-    facilitating data augmentation and preprocessing steps.
+    A custom PyTorch Dataset class for bee hive mel spectrogram images. This class is designed to handle mel spectrogram datasets.
 
     Parameters:
     - metadata (pd.DataFrame): DataFrame containing image metadata (e.g., filenames, labels).
-    - img_dir (str): Directory path where images are stored.
-    - classes (list): List of column names in `metadata` representing the label(s) for each image.
-    - img_mode (str, optional): The mode of the images, either "RGB" or "GRAY". Default is "RGB".
+    - processed_data_path (str): Directory path where processed mel specs are stored (requires .npy files).
+    - target_feature (str): Column name in `metadata` representing the label for each mel spec.
     - transform (callable, optional): A function/transform that takes in an image and returns a transformed version. E.g., data augmentation procedures.
-    - target_transform (callable, optional): A function/transform that takes in the target and transforms it.
-    - filename_prefix (str, optional): Prefix to add to filenames from `metadata` before loading images. Useful if `metadata` filenames do not include a common path prefix that is present in `img_dir`.
+    - fake_rgb (bool): If True, the mel spec will be converted to a 3-channel image (RGB) by stacking the same image 3 times.
 
     Usage:
-    dataset = XRayDataset(metadata=df, img_dir="/path/to/images", classes=['Normal', 'Pneumonia'], img_mode='RGB')
+    dataset = HiveDataset(metadata=df, processed_data_path="/path/to/images", target_feature='queen_status, fake_rgb=True)
     """
 
     def __init__(
         self,
-        metadata_path: str,
-        mel_spec_path: str,
+        metadata_df: pd.DataFrame,
+        processed_data_path: str,
         target_feature: str,
+        transform=None,
+        fake_rgb=False
     ):
-        metadata_column_names = ['device', 'hive number', 'date', 'hive temp', 'hive humidity',
-       'hive pressure', 'weather temp', 'weather humidity', 'weather pressure',
-       'wind speed', 'gust speed', 'weatherID', 'cloud coverage', 'rain',
-       'lat', 'long', 'file name', 'queen presence', 'queen acceptance',
-       'frames', 'target', 'time', 'queen status']
-        metadata = np.load(metadata_path, allow_pickle=True)
-        metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
-        self.metadata = metadata_df
-
+        self.metadata = metadata_df.reset_index()
         self.target = metadata_df[target_feature].values
-
-        self.mel_specs = np.load(mel_spec_path)
+        self.processed_data_path = processed_data_path
+        self.transform = transform
+        self.fake_rgb = fake_rgb
 
     def __len__(self):
         """Returns the total number of samples in the dataset."""
@@ -56,18 +47,32 @@ class HiveDataset(Dataset):
         Returns:
         - tuple: (mel_spec, label) where image is the mel_spec and label is the target(s).
         """
+        # Load mel_spec
+        mel_spec_path = os.path.join(self.processed_data_path, self.metadata.iloc[idx]["sample_name"] + ".npy")
+        mel_spec = np.load(mel_spec_path)
 
-        mel_spec = torch.tensor(self.mel_specs[idx]).float()
+        mel_spec = torch.tensor(mel_spec).float()
+
         # Bring into shape (1, 128, 5168) for CNN
+        # (channels, height, width)
         mel_spec = mel_spec.unsqueeze(0)
 
-        # TODO: Do transformations here (e.g., data augmentation, normalization, etc.)
-        
-        # One hot encode the target
-        # TODO: Is this necessary?
-        # TODO: Move to preprocessing step?
-        label = torch.tensor(self.target[idx]).float()
-        encoded_label = torch.zeros(4)
-        encoded_label[int(label)] = 1
+        # TODO: Should we remove this?
+        # Scale the time dimension to 400
+        mel_spec = F.interpolate(mel_spec.unsqueeze(0), size=(128, 400), mode='bilinear', align_corners=False)
 
-        return mel_spec, encoded_label
+        # TODO: Find a smarter way to do this
+        # Remove the extra dimension added by the interpolation step (1, 1, 128, 400) -> (1, 128, 400)
+        mel_spec = mel_spec.squeeze(0)
+
+        # Fake RGB to be able to use pre-trained models
+        if(self.fake_rgb):
+            # Fake 3 channels:
+            mel_spec = torch.stack([mel_spec[0], mel_spec[0], mel_spec[0]], 0)
+
+        if(self.transform):
+            mel_spec = self.transform(mel_spec)
+
+        label = torch.tensor(self.target[idx] == "active").float()
+
+        return mel_spec, label

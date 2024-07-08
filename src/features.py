@@ -3,6 +3,7 @@ import numpy as np
 import librosa
 import pandas as pd
 import config
+from sklearn.preprocessing import MinMaxScaler
 
 
 def extract_target_from_metadata():
@@ -30,54 +31,41 @@ def create_mel_spectrogram_from_audio_data(audio_data: np.ndarray, sampling_rate
     return mel_spectrogram
 
 
-def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, processed_data_path=config.PROCESSED_DATA_PATH, metadata_file_path=config.METADATA_FILE):
-    """Preprocesses the audio files and metadata and packs them into a .npy file.
+def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH):
+    """Preprocesses the audio files packs each of them into a .npy file.
 
     Parameters:
     - audio_files_path (str): Path to the directory containing the audio files.
     - processed_data_path (str): Path to the directory where the .npy file should be saved.
     """
 
-    print('Packing audio files to .npy file...')
+    print('Packing audio files to .npy files...')
     print('Audio files path:', audio_files_path)
     if not os.path.exists(processed_data_path):
         os.makedirs(processed_data_path)
-    packed_np_path_mel_specs = os.path.join(processed_data_path, 'bee_hive_mel_specs.npy')
-    packed_np_path_metadata = os.path.join(processed_data_path, 'bee_hive_metadata.npy')
 
     audio_files = librosa.util.find_files(audio_files_path, ext=['wav'])
     len_audio_files = len(audio_files)
     print('Number of audio files:', len_audio_files)
 
-    metadata_df = pd.read_csv(metadata_file_path)
-
-    mel_specs = []
-    metadatas = []
     for index, file in enumerate(audio_files):
         print('--- Preparing file number:', index + 1, 'of', len_audio_files, '---')
-
-        # Get corresponding metadata for the audio file
-        metadata_key = get_matching_raw_filename(file)
-        metadata = metadata_df.loc[metadata_df['file name'] == metadata_key]
-        metadata = np.array(metadata)
-        metadata = np.squeeze(metadata)
-        metadata[16] = os.path.basename(file) # replace the raw file name with the "real" "file name
 
         # Generate mel spec
         audio_data, _ = librosa.load(
             file, duration=config.duration_of_audio_file, sr=None)
-        # audio_data = librosa.resample(y=audio_data, orig_sr=22050, target_sr=config.sampling_rate)
         mel_spectrogram = create_mel_spectrogram_from_audio_data(audio_data, hop_length=256)
 
-        mel_specs.append(mel_spectrogram)
-        metadatas.append(metadata)
+        # Normalize the mel spectrogram
+        # TODO: We could also use librosa.util.normalize() instead of MinMaxScaler here (?)
+        scaler = MinMaxScaler()
+        scaler.fit(mel_spectrogram)
+        mel_spectrogram = scaler.transform(mel_spectrogram)
+        print("Mel spec min:", np.min(mel_spectrogram), "Mel spec max:", np.max(mel_spectrogram))
 
-    # Write the data to two .npy files
-    mel_specs = np.array(mel_specs)
-    metadata = np.array(metadatas)
-    
-    np.save(packed_np_path_mel_specs, mel_specs)
-    np.save(packed_np_path_metadata, metadata)
+        mel_spec_array = np.array(mel_spectrogram)
+        path_mel_spec_file = os.path.join(processed_data_path, os.path.basename(file).replace('.wav', ''))
+        np.save(path_mel_spec_file, mel_spec_array)
 
 
 if __name__ == "__main__":
