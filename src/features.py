@@ -44,23 +44,38 @@ def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, proce
     print('Number of audio files:', len_audio_files)
 
     for index, file in enumerate(audio_files):
-        print('--- Preparing file number:', index + 1, 'of', len_audio_files, '---')
+        try:
 
-        # Generate mel spec
-        audio_data, _ = librosa.load(
-            file, duration=config.duration_of_audio_file, sr=None)
-        mel_spectrogram = create_mel_spectrogram_from_audio_data(audio_data, hop_length=256)
+            path_mel_spec_file = os.path.join(processed_data_path, os.path.basename(file).replace('.wav', ''))
 
-        # Normalize the mel spectrogram
-        # TODO: We could also use librosa.util.normalize() instead of MinMaxScaler here (?)
-        scaler = MinMaxScaler()
-        scaler.fit(mel_spectrogram)
-        mel_spectrogram = scaler.transform(mel_spectrogram)
-        print("Mel spec min:", np.min(mel_spectrogram), "Mel spec max:", np.max(mel_spectrogram))
+            if os.path.isfile(path_mel_spec_file + '.npy'):
+                print("File already exists, skipping " + os.path.basename(file))
+                continue
 
-        mel_spec_array = np.array(mel_spectrogram)
-        path_mel_spec_file = os.path.join(processed_data_path, os.path.basename(file).replace('.wav', ''))
-        np.save(path_mel_spec_file, mel_spec_array)
+            print('--- Preparing file number:', index + 1, 'of', len_audio_files, '---')
+
+            # Generate mel spec
+            audio_data, _ = librosa.load(
+                file, duration=config.duration_of_audio_file, sr=None)
+            mel_spectrogram = create_mel_spectrogram_from_audio_data(audio_data, hop_length=256)
+
+            # Normalize the mel spectrogram
+            # TODO: We could also use librosa.util.normalize() instead of MinMaxScaler here (?)
+            scaler = MinMaxScaler()
+            scaler.fit(mel_spectrogram)
+            mel_spectrogram = scaler.transform(mel_spectrogram)
+            print("Mel spec min:", np.min(mel_spectrogram), "Mel spec max:", np.max(mel_spectrogram))
+
+            mel_spec_array = np.array(mel_spectrogram)
+            np.save(path_mel_spec_file, mel_spec_array)
+
+        except BaseException:
+            print("Error: Skipping file " + file + " due to a runtime error.")
+            continue
+
+    print('---------------------------------------------')
+    print('Finished packing audio files to .npy files.')
+    print('---------------------------------------------')
 
 
 def preprocess_metadata():
