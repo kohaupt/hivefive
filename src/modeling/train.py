@@ -25,7 +25,11 @@ class Train():
     def __init__(self):
         # metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
         # metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
-        metadata_df = pd.read_csv(config.PROCESSED_METADATA_FILE)
+
+        metadata_column_names = ['sample_name', "label", "hive number",]
+        metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
+        metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
+        metadata_df = metadata_df.astype({'label': 'int32', 'hive number': 'int32'})
 
         print(metadata_df[config.TARGET_FEATURE].value_counts())
 
@@ -97,6 +101,9 @@ class Train():
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Training will happen on {device}.")
 
+        if not os.path.exists(config.MODEL_INTERIM_PATH):
+            os.makedirs(config.MODEL_INTERIM_PATH)
+
         for epoch in range(epochs):
             print(f"EPOCH {epoch_number + 1}")
 
@@ -135,7 +142,22 @@ class Train():
             # Track best performance, and save the model's state
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
+                checkpoint_path = os.path.join(config.MODEL_INTERIM_PATH, f"model_{timestamp}_{epoch_number}_checkpoint.pt")
                 model_path = os.path.join(config.MODEL_INTERIM_PATH, f"model_{timestamp}_{epoch_number}.pt")
+
+                checkpoint = {
+                    'epoch': epoch,
+                    'state_dict': self.model.state_dict(),
+                    'optimizer': self.optimizer.state_dict()
+                }
+
+                torch.save(checkpoint, checkpoint_path)
                 torch.save(self.model.state_dict(), model_path)
 
             epoch_number += 1
+
+    def load_model(self, checkpoint_path, model, optimizer):
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        return model, optimizer, checkpoint['epoch']
