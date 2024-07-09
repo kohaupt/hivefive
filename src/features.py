@@ -4,13 +4,8 @@ import librosa
 import pandas as pd
 import config
 from sklearn.preprocessing import MinMaxScaler
-
-
-def extract_target_from_metadata():
-    data = pd.read_csv(os.path.join(
-        config.path_data, config.metadata_filename))
-
-    return data[["queen status", "file name"]]
+from sklearn.preprocessing import LabelEncoder
+import re
 
 
 def get_matching_raw_filename(file):
@@ -68,5 +63,27 @@ def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, proce
         np.save(path_mel_spec_file, mel_spec_array)
 
 
+def preprocess_metadata():
+    metadata_df = pd.read_csv(config.METADATA_FILE)
+
+    # Extract hive number from sample name and save it as a separate column
+    metadata_df["hive number"] = 0
+
+    for index, row in metadata_df.iterrows():
+        hive_number = re.match("Hive\d", row["sample_name"]).group(0)[-1:]
+        metadata_df.at[index, "hive number"] = int(hive_number)
+
+    # # TODO: Remove this once we use the full dataset
+    # # Select a subset of the data with only one beehive (get hive number from filename)
+    # metadata_df = metadata_df[metadata_df["hive number"] == "Hive1"]
+
+    # Encode the target feature via label encoding
+    le = LabelEncoder()
+    metadata_df["label"] = le.fit_transform(metadata_df["label"])
+
+    np.save(config.PROCESSED_METADATA_FILE, metadata_df.to_numpy())
+
+
 if __name__ == "__main__":
+    preprocess_metadata()
     preprocess_data_and_pack_to_npy()

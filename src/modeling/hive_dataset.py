@@ -17,7 +17,7 @@ class HiveDataset(Dataset):
     - fake_rgb (bool): If True, the mel spec will be converted to a 3-channel image (RGB) by stacking the same image 3 times.
 
     Usage:
-    dataset = HiveDataset(metadata=df, processed_data_path="/path/to/images", target_feature='queen_status, fake_rgb=True)
+    dataset = HiveDataset(metadata=df, processed_data_path="/path/to/images", target_feature='queen_status', fake_rgb=True)
     """
 
     def __init__(
@@ -73,6 +73,6 @@ class HiveDataset(Dataset):
         if(self.transform):
             mel_spec = self.transform(mel_spec)
 
-        label = torch.tensor(self.target[idx] == "active").float()
+        label = torch.tensor(self.target[idx]).float()
 
         return mel_spec, label

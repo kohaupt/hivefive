@@ -7,7 +7,6 @@ from torchinfo import summary
 from datetime import datetime
 from tqdm import tqdm
 from model import CNNModel
-from model_transfer_learning import DenseNetTransferModel
 import numpy as np
 from hive_dataset import HiveDataset
 import os
@@ -26,14 +25,9 @@ class Train():
     def __init__(self):
         # metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
         # metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
-        metadata_df = pd.read_csv(config.METADATA_FILE)
+        metadata_df = pd.read_csv(config.PROCESSED_METADATA_FILE)
 
-        # TODO: Remove this once we use the full dataset
-        # Select a subset of the data with only one beehive (get hive number from filename)
-        metadata_df["hive number"] = metadata_df["sample_name"].apply(lambda x: x.split(" ")[0])
-        metadata_df = metadata_df[metadata_df["hive number"] == "Hive1"]
-
-        print(metadata_df["label"].value_counts())
+        print(metadata_df[config.TARGET_FEATURE].value_counts())
 
         # Train, test, val split
         metadata_train, metadata_test = train_test_split(metadata_df, train_size=0.7, shuffle=True, random_state=42)
@@ -54,6 +48,7 @@ class Train():
 
         self.loss_fn = nn.BCELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001)
+
 
     def train_one_epoch(self, epoch_index, tb_writer, device="cpu"):
         running_loss = 0.
@@ -92,7 +87,6 @@ class Train():
         return avg_loss / (i + 1)
 
 
-    # Initializing in a separate cell so we can easily add more epochs to the same run
     def train_cnn(self, epochs):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         writer = SummaryWriter('runs/cnn_trainer_{}'.format(timestamp))
@@ -145,7 +139,3 @@ class Train():
                 torch.save(self.model.state_dict(), model_path)
 
             epoch_number += 1
-
-
-# trainer = Train()
-# trainer.train_cnn()
