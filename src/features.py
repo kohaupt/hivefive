@@ -22,14 +22,6 @@ def segment_audio(file_path, segment_duration=config.segment_duration, overlap_d
     Also normalizes the audio data. Padding is added if the last segment is shorter than the fixed duration."""
     audio, sr = librosa.load(file_path)
 
-    # Normalize the mel spectrogram
-    # TODO: We could also use audio = librosa.util.normalize(audio) instead of MinMaxScaler here (?)
-    # scaler = MinMaxScaler()
-    # scaler.fit(audio)
-    # mel_spectrogram = scaler.transform(audio)
-    audio = librosa.util.normalize(audio)
-    print("Mel spec min:", np.min(audio), "Mel spec max:", np.max(audio))
-
     segment_length = int(segment_duration * sr)
     overlap_length = int(overlap_duration * sr)
 
@@ -54,6 +46,11 @@ def create_mel_spectrogram_from_audio_data(audio_data: np.ndarray, sampling_rate
 
     mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
 
+    scaler = MinMaxScaler()
+    scaler.fit(mel_spectrogram)
+    mel_spectrogram = scaler.transform(mel_spectrogram)
+    print("Mel spec min:", np.min(mel_spectrogram), "Mel spec max:", np.max(mel_spectrogram))
+
     return mel_spectrogram
 
 def add_metadata_to_segment(metadata_df: pd.DataFrame, filename: str):
@@ -67,18 +64,10 @@ def add_metadata_to_segment(metadata_df: pd.DataFrame, filename: str):
     - metadata_df (pd.DataFrame): The updated metadata dataframe.
     """
 
-    segment_number = filename.split("__segment")[1]
-    segment_mask = metadata_df["sample_name"].str.contains(filename.split("__segment")[0])
+    segment_mask = metadata_df["sample_name"] == filename.split("__segment")[0]
 
-    # If it is the first segment, we just add the sample index to the sample name
-    if int(segment_number) == 0:
-        datapoint_index = metadata_df[segment_mask].index[0]
-        metadata_df.at[datapoint_index, "sample_name"] = filename
-        return metadata_df
-
-    # If it is not the first segment, we copy the entry and add the sample index to the sample name
     new_row = metadata_df[segment_mask].iloc[0].copy()
-    new_row["sample_name"] = filename
+    new_row["segment"] = filename
     metadata_df.loc[len(metadata_df)] = new_row
 
     print("Added metadata entry for segment " + filename)
@@ -168,6 +157,7 @@ def segment_metadata():
     metadata_column_names = ['sample_name', "label", "hive number"]
     metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
     metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
+    metadata_df["segment"] = np.NaN
 
     files = glob.glob(os.path.join(config.NORMALIZED_MEL_SPEC_PATH, "*.npy"))
     print("Found: ", len(files), " files. Processing...")
@@ -177,13 +167,15 @@ def segment_metadata():
         filename = os.path.basename(file).replace('.npy', '')
         file_basename = filename.split("__segment")[0]
 
-        if metadata_df[metadata_df['sample_name'].str.contains(file_basename)].empty:
+        if metadata_df[metadata_df['sample_name'] == file_basename].empty:
             print("Could not find metadata entry for file " + filename)
             print("Skipping file " + filename)
             continue
 
         metadata_df = add_metadata_to_segment(metadata_df, filename)
         segment_count += 1
+
+    metadata_df.dropna(inplace=True)
 
     np.save(config.PROCESSED_METADATA_FILE_SEGMENTED, metadata_df.to_numpy())
     print('---------------------------------------------')
@@ -192,6 +184,6 @@ def segment_metadata():
 
 
 if __name__ == "__main__":
-    preprocess_metadata()
-    preprocess_data_and_pack_to_npy()
+    # preprocess_metadata()
+    # preprocess_data_and_pack_to_npy()
     segment_metadata()
