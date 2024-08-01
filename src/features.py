@@ -64,6 +64,10 @@ def add_metadata_to_segment(metadata_df: pd.DataFrame, filename: str):
     - metadata_df (pd.DataFrame): The updated metadata dataframe.
     """
 
+    if("__segment" not in filename):
+        print("Filename does not contain a segment number. Skipping " + filename)
+        return metadata_df
+
     segment_mask = metadata_df["sample_name"] == filename.split("__segment")[0]
 
     new_row = metadata_df[segment_mask].iloc[0].copy()

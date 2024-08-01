@@ -48,7 +48,7 @@ class HiveDataset(Dataset):
         - tuple: (mel_spec, label) where image is the mel_spec and label is the target(s).
         """
         # Load mel_spec
-        mel_spec_path = os.path.join(self.processed_data_path, self.metadata.iloc[idx]["sample_name"] + ".npy")
+        mel_spec_path = os.path.join(self.processed_data_path, self.metadata.iloc[idx]["segment"] + ".npy")
         mel_spec = np.load(mel_spec_path)
 
         mel_spec = torch.tensor(mel_spec).float()

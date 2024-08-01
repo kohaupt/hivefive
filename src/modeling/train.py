@@ -26,16 +26,22 @@ class Train():
         # metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
         # metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
 
-        metadata_column_names = ['sample_name', "label", "hive number",]
-        metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
+        metadata_column_names = ['sample_name', "label", "hive number", "segment",]
+        metadata = np.load(config.PROCESSED_METADATA_FILE_SEGMENTED, allow_pickle=True)
         metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
         metadata_df = metadata_df.astype({'label': 'int32', 'hive number': 'int32'})
 
         print(metadata_df[config.TARGET_FEATURE].value_counts())
 
         # Train, test, val split
-        metadata_train, metadata_test = train_test_split(metadata_df, train_size=0.7, shuffle=True, random_state=42)
-        metadata_val, metadata_test = train_test_split(metadata_test, train_size=0.5, shuffle=True, random_state=42)
+        # Split by sample_name to avoid data leakage
+        unique_samples = metadata_df["sample_name"].unique()
+        self.train_samples, eval_samples = train_test_split(unique_samples, train_size=0.7, shuffle=True, random_state=42)
+        self.val_samples, self.test_samples = train_test_split(eval_samples, train_size=0.5, shuffle=True, random_state=42)
+    
+        metadata_train = metadata_df[metadata_df["sample_name"].isin(self.train_samples)]
+        metadata_val = metadata_df[metadata_df["sample_name"].isin(self.val_samples)]
+        metadata_test = metadata_df[metadata_df["sample_name"].isin(self.test_samples)]
 
         train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
         self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
@@ -148,7 +154,10 @@ class Train():
                 checkpoint = {
                     'epoch': epoch,
                     'state_dict': self.model.state_dict(),
-                    'optimizer': self.optimizer.state_dict()
+                    'optimizer': self.optimizer.state_dict(),
+                    'train_samples': self.train_samples,
+                    'val_samples': self.val_samples,
+                    'test_samples': self.test_samples,
                 }
 
                 torch.save(checkpoint, checkpoint_path)
@@ -160,4 +169,7 @@ class Train():
         checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        return model, optimizer, checkpoint['epoch']
+        train_samples = checkpoint['train_samples']
+        val_samples = checkpoint['val_samples']
+        test_samples = checkpoint['test_samples']
+        return model, optimizer, checkpoint['epoch'], train_samples, val_samples, test_samples
