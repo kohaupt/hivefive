@@ -20,6 +20,7 @@ def get_matching_raw_filename(file):
 def segment_audio(file_path, segment_duration=config.segment_duration, overlap_duration=config.overlap_duration):
     """Segments the audio file at the given path into smaller segments with a fixed duration and overlap. 
     Also normalizes the audio data. Padding is added if the last segment is shorter than the fixed duration."""
+    
     audio, sr = librosa.load(file_path)
 
     segment_length = int(segment_duration * sr)
@@ -41,6 +42,7 @@ def segment_audio(file_path, segment_duration=config.segment_duration, overlap_d
 
 def create_mel_spectrogram_from_audio_data(audio_data: np.ndarray, sampling_rate=config.sampling_rate, hop_length=config.hop_length, n_mels=config.n_mels):
     """Creates a mel spectrogram from the given audio data."""
+
     mel_spectrogram = librosa.feature.melspectrogram(
         y=audio_data, sr=sampling_rate, hop_length=hop_length, n_mels=n_mels, fmax=int(sampling_rate/2), power=2)
 
@@ -142,10 +144,6 @@ def preprocess_metadata():
         hive_number = re.match("Hive\d", row["sample_name"]).group(0)[-1:]
         metadata_df.at[index, "hive number"] = int(hive_number)
 
-    # # TODO: Remove this once we use the full dataset
-    # # Select a subset of the data with only one beehive (get hive number from filename)
-    # metadata_df = metadata_df[metadata_df["hive number"] == "Hive1"]
-
     # Encode the target feature via label encoding
     le = LabelEncoder()
     metadata_df["label"] = le.fit_transform(metadata_df["label"])
@@ -188,6 +186,6 @@ def segment_metadata():
 
 
 if __name__ == "__main__":
-    # preprocess_metadata()
-    # preprocess_data_and_pack_to_npy()
+    preprocess_metadata()
+    preprocess_data_and_pack_to_npy()
     segment_metadata()

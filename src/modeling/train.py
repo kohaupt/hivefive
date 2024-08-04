@@ -22,16 +22,12 @@ import config
 
 class Train():
 
-    def __init__(self):
-        # metadata = np.load(config.PROCESSED_METADATA_FILE, allow_pickle=True)
-        # metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
-
+    def __init__(self, model=None, loss_fn=None):
+        # Load metadata
         metadata_column_names = ['sample_name', "label", "hive number", "segment",]
         metadata = np.load(config.PROCESSED_METADATA_FILE_SEGMENTED, allow_pickle=True)
         metadata_df = pd.DataFrame(metadata, columns=metadata_column_names)
         metadata_df = metadata_df.astype({'label': 'int32', 'hive number': 'int32'})
-
-        print(metadata_df[config.TARGET_FEATURE].value_counts())
 
         # Train, test, val split
         # Split by sample_name to avoid data leakage
@@ -50,13 +46,16 @@ class Train():
         test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
         self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
 
-        self.model = CNNModel()
+        # Initialize model
+        self.model = model
 
+        # Send model to GPU if available
         if torch.cuda.is_available():
             self.model.cuda()
         print(summary(self.model))
 
-        self.loss_fn = nn.BCELoss()
+        # Initialize loss function and optimizer
+        self.loss_fn = loss_fn
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001)
 
 
@@ -97,6 +96,27 @@ class Train():
         return avg_loss / (i + 1)
 
 
+    def evaluate(self, device="cpu"):
+        running_vloss = 0.0
+
+        # Set the model to evaluation mode, disabling dropout and using population
+        # statistics for batch normalization.
+        self.model.eval()
+
+        # Disable gradient computation and reduce memory consumption.
+        with torch.no_grad():
+            for i, vdata in enumerate(self.validation_dataloader):
+                if i > 10:
+                    break
+                vinputs, vlabels = vdata
+                vinputs, vlabels = vinputs.to(device), vlabels.to(device)
+                voutputs = self.model(vinputs)
+                voutputs = voutputs.squeeze(1)
+                vloss = self.loss_fn(voutputs, vlabels)
+                running_vloss += vloss
+        return running_vloss / (i + 1)
+
+
     def train_cnn(self, epochs):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         writer = SummaryWriter('runs/cnn_trainer_{}'.format(timestamp))
@@ -117,37 +137,20 @@ class Train():
             self.model.train(True)
             avg_loss_train = self.train_one_epoch(epoch_number, writer, device)
 
-            # TODO: Move this to a separate function
-            running_vloss = 0.0
-            # Set the model to evaluation mode, disabling dropout and using population
-            # statistics for batch normalization.
-            self.model.eval()
-
-            # Disable gradient computation and reduce memory consumption.
-            with torch.no_grad():
-                for i, vdata in enumerate(self.validation_dataloader):
-                    if i > 10:
-                        break
-                    vinputs, vlabels = vdata
-                    vinputs, vlabels = vinputs.to(device), vlabels.to(device)
-                    voutputs = self.model(vinputs)
-                    voutputs = voutputs.squeeze(1)
-                    vloss = self.loss_fn(voutputs, vlabels)
-                    running_vloss += vloss
-
-            avg_vloss = running_vloss / (i + 1)
-            print(f"LOSS train {avg_loss_train:.3f} valid {avg_vloss:.3f}")
+            # Evaluate the model on the validation set
+            avg_loss_val = self.evaluate(device)            
+            print(f"LOSS train: {avg_loss_train:.3f}, val: {avg_loss_val:.3f}")
 
             # Log the running loss averaged per batch
             # for both training and validation
             writer.add_scalars('Training vs. Validation Loss',
-                            { 'Training' : avg_loss_train, 'Validation' : avg_vloss },
+                            { 'Training' : avg_loss_train, 'Validation' : avg_loss_val },
                             epoch_number + 1)
             writer.flush()
 
             # Track best performance, and save the model's state
-            if avg_vloss < best_vloss:
-                best_vloss = avg_vloss
+            if avg_loss_val < best_vloss:
+                best_vloss = avg_loss_val
                 checkpoint_path = os.path.join(config.MODEL_INTERIM_PATH, f"model_{timestamp}_{epoch_number}_checkpoint.pt")
                 model_path = os.path.join(config.MODEL_INTERIM_PATH, f"model_{timestamp}_{epoch_number}.pt")
 
@@ -164,6 +167,8 @@ class Train():
                 torch.save(self.model.state_dict(), model_path)
 
             epoch_number += 1
+        writer.close()
+
 
     def load_model(self, checkpoint_path, model, optimizer):
         checkpoint = torch.load(checkpoint_path)

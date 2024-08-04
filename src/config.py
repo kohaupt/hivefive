@@ -24,6 +24,7 @@ number_of_samples_in_audio_file = sampling_rate * duration_of_audio_file
 segment_duration = 60.0
 overlap_duration = 1.0
 
+# Mel spectrogram configuration
 n_fft = 2048
 hop_length = 512
 n_mels = 128

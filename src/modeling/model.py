@@ -1,5 +1,4 @@
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -41,7 +40,5 @@ class CNNModel(nn.Module):
         x = self.pool(x)
         x = self.flatten(x)
         x = F.relu(self.fc1(x))
-        # x = torch.sigmoid(self.fc2(x))
-        # x = torch.log_softmax(self.fc2(x), dim=1, dtype=torch.float32)
         x = F.sigmoid(self.fc2(x))
         return x
