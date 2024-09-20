@@ -2,11 +2,9 @@
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-import torch.nn as nn
 from torchinfo import summary
 from datetime import datetime
 from tqdm import tqdm
-from model import CNNModel
 import numpy as np
 from hive_dataset import HiveDataset
 import os
@@ -22,7 +20,7 @@ import config
 
 class Train():
 
-    def __init__(self, model=None, loss_fn=None):
+    def __init__(self, model=None, loss_fn=None, training_hive=None):
         # Load metadata
         metadata_column_names = ['sample_name', "label", "hive number", "segment",]
         metadata = np.load(config.PROCESSED_METADATA_FILE_SEGMENTED, allow_pickle=True)
@@ -31,20 +29,36 @@ class Train():
 
         # Train, test, val split
         # Split by sample_name to avoid data leakage
-        unique_samples = metadata_df["sample_name"].unique()
-        self.train_samples, eval_samples = train_test_split(unique_samples, train_size=0.7, shuffle=True, random_state=42)
-        self.val_samples, self.test_samples = train_test_split(eval_samples, train_size=0.5, shuffle=True, random_state=42)
-    
-        metadata_train = metadata_df[metadata_df["sample_name"].isin(self.train_samples)]
-        metadata_val = metadata_df[metadata_df["sample_name"].isin(self.val_samples)]
-        metadata_test = metadata_df[metadata_df["sample_name"].isin(self.test_samples)]
+        if training_hive:
+            unique_samples_train = metadata_df[metadata_df["hive number"] == training_hive]["sample_name"].unique()
+            self.train_samples, self.val_samples = train_test_split(unique_samples_train, train_size=0.7, shuffle=True, random_state=42)
+            self.test_samples = metadata_df[metadata_df["hive number"] != training_hive]["sample_name"].unique()
+        
+            metadata_train = metadata_df[metadata_df["sample_name"].isin(self.train_samples)]
+            metadata_val = metadata_df[metadata_df["sample_name"].isin(self.val_samples)]
+            metadata_test = metadata_df[metadata_df["sample_name"].isin(self.test_samples)]
 
-        train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
-        self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
-        val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
-        self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=32, shuffle=True)
-        test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
-        self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
+            train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
+            val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=32, shuffle=True)
+            test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
+        else:
+            unique_samples = metadata_df["sample_name"].unique()
+            self.train_samples, eval_samples = train_test_split(unique_samples, train_size=0.7, shuffle=True, random_state=42)
+            self.val_samples, self.test_samples = train_test_split(eval_samples, train_size=0.5, shuffle=True, random_state=42)
+        
+            metadata_train = metadata_df[metadata_df["sample_name"].isin(self.train_samples)]
+            metadata_val = metadata_df[metadata_df["sample_name"].isin(self.val_samples)]
+            metadata_test = metadata_df[metadata_df["sample_name"].isin(self.test_samples)]
+
+            train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
+            val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=32, shuffle=True)
+            test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
 
         # Initialize model
         self.model = model
