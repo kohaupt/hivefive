@@ -40,11 +40,11 @@ def segment_audio(file_path, segment_duration=config.segment_duration, overlap_d
     return segments
 
 
-def create_mel_spectrogram_from_audio_data(audio_data: np.ndarray, sampling_rate=config.sampling_rate, hop_length=config.hop_length, n_mels=config.n_mels):
+def create_mel_spectrogram_from_audio_data(audio_data: np.ndarray, sampling_rate=config.sampling_rate, hop_length=config.hop_length, n_mels=config.n_mels, fmax=config.fmax):
     """Creates a mel spectrogram from the given audio data."""
 
     mel_spectrogram = librosa.feature.melspectrogram(
-        y=audio_data, sr=sampling_rate, hop_length=hop_length, n_mels=n_mels, fmax=int(sampling_rate/2), power=2)
+        y=audio_data, sr=sampling_rate, hop_length=hop_length, n_mels=n_mels, fmax=fmax, power=2)
 
     mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
 
