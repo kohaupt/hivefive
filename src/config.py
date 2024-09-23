@@ -28,6 +28,6 @@ overlap_duration = 1.0
 n_fft = 2048
 hop_length = 512
 n_mels = 128
-fmax = int(sampling_rate/2)
+fmax = 5000
 
 number_of_target_columns = 1

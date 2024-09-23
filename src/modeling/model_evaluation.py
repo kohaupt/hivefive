@@ -14,6 +14,7 @@ def plot_roc_curves(
     ax=None,
     sorted: bool = True,
     colormap: str = "viridis_r",
+    title: str = "Receiver Operating Characteristic (ROC) Curves",
 ):
     """Plot ROC curves for multi-class prediction.
 
@@ -78,7 +79,7 @@ def plot_roc_curves(
     ax.set_ylim([0.0, 1.0])
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
-    ax.set_title("Receiver Operating Characteristic for Multi-class Prediction")
+    ax.set_title(title)
 
     # Add legend and grid
     ax.legend(loc="lower right", fontsize=10)
