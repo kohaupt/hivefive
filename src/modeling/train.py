@@ -7,6 +7,7 @@ from datetime import datetime
 from tqdm import tqdm
 import numpy as np
 from hive_dataset import HiveDataset
+from hive_dataset_wav import HiveDatasetWav
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -20,7 +21,7 @@ import config
 
 class Train():
 
-    def __init__(self, model=None, loss_fn=None, training_hive=None):
+    def __init__(self, model=None, loss_fn=None, training_hive=None, dataset="NPY"):
         # Load metadata
         metadata_column_names = ['sample_name', "label", "hive number", "segment",]
         metadata = np.load(config.PROCESSED_METADATA_FILE_SEGMENTED, allow_pickle=True)
@@ -38,11 +39,17 @@ class Train():
             metadata_val = metadata_df[metadata_df["sample_name"].isin(self.val_samples)]
             metadata_test = metadata_df[metadata_df["sample_name"].isin(self.test_samples)]
 
-            train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            if(dataset == "WAV"):
+                train_dataset = HiveDatasetWav(metadata_df=metadata_train, segmented_data_path=config.SEGMENTED_WAV_PATH, target_feature=config.TARGET_FEATURE)
+                val_dataset = HiveDatasetWav(metadata_df=metadata_val, segmented_data_path=config.SEGMENTED_WAV_PATH, target_feature=config.TARGET_FEATURE)
+                test_dataset = HiveDatasetWav(metadata_df=metadata_test, segmented_data_path=config.SEGMENTED_WAV_PATH, target_feature=config.TARGET_FEATURE)
+            else:
+                train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+                val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+                test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+
             self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
-            val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
             self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=32, shuffle=True)
-            test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
             self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
         else:
             unique_samples = metadata_df["sample_name"].unique()
@@ -53,11 +60,17 @@ class Train():
             metadata_val = metadata_df[metadata_df["sample_name"].isin(self.val_samples)]
             metadata_test = metadata_df[metadata_df["sample_name"].isin(self.test_samples)]
 
-            train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+            if(dataset == "WAV"):
+                train_dataset = HiveDatasetWav(metadata_df=metadata_train, segmented_data_path=config.SEGMENTED_WAV_PATH, target_feature=config.TARGET_FEATURE)
+                val_dataset = HiveDatasetWav(metadata_df=metadata_val, segmented_data_path=config.SEGMENTED_WAV_PATH, target_feature=config.TARGET_FEATURE)
+                test_dataset = HiveDatasetWav(metadata_df=metadata_test, segmented_data_path=config.SEGMENTED_WAV_PATH, target_feature=config.TARGET_FEATURE)
+            else:
+                train_dataset = HiveDataset(metadata_df=metadata_train, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+                val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+                test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
+
             self.training_dataloader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
-            val_dataset = HiveDataset(metadata_df=metadata_val, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
             self.validation_dataloader = DataLoader(dataset=val_dataset, batch_size=32, shuffle=True)
-            test_dataset = HiveDataset(metadata_df=metadata_test, processed_data_path=config.NORMALIZED_MEL_SPEC_PATH, target_feature=config.TARGET_FEATURE)
             self.test_dataloader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
 
         # Initialize model
@@ -131,7 +144,7 @@ class Train():
         return running_vloss / (i + 1)
 
 
-    def train_cnn(self, epochs):
+    def train(self, epochs):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         writer = SummaryWriter('runs/cnn_trainer_{}'.format(timestamp))
         epoch_number = 0
