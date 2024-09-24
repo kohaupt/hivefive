@@ -7,6 +7,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import LabelEncoder
 import re
 import glob
+import soundfile as sf
 
 
 def get_matching_raw_filename(file):
@@ -124,6 +125,52 @@ def preprocess_data_and_pack_to_npy(audio_files_path=config.RAW_DATA_PATH, proce
 
     print('---------------------------------------------')
     print('Finished packing audio files to .npy files.')
+    print('---------------------------------------------')
+
+
+def segment_all_wav_files(audio_files_path=config.RAW_DATA_PATH, processed_data_path=config.SEGMENTED_WAV_PATH):
+    """Segments all audio files and stores the segments as .wav files.
+
+    Parameters:
+    - audio_files_path (str): Path to the directory containing the audio files.
+    - processed_data_path (str): Path to the directory where the segmented files should be saved.
+    """
+
+    print('Packing audio files to .npy files...')
+    print('Audio files path:', audio_files_path)
+    if not os.path.exists(processed_data_path):
+        os.makedirs(processed_data_path)
+
+    audio_files = librosa.util.find_files(audio_files_path, ext=['wav'])
+    len_audio_files = len(audio_files)
+    print('Number of audio files:', len_audio_files)
+
+    for index, file in enumerate(audio_files):
+        try:
+
+            file_basename = os.path.basename(file).replace('.wav', '')
+            path_mel_spec_file = os.path.join(processed_data_path, file_basename)
+
+            if os.path.isfile(path_mel_spec_file + "__segment0" + '.npy'):
+                print("File seems to be existing & processed. Skipping " + file_basename)
+                continue
+
+            print('--- Preparing file number:', index + 1, 'of', len_audio_files, '---')
+
+            # Segment audio file
+            segments = segment_audio(file, config.segment_duration, config.overlap_duration)
+
+            for idx, segment in enumerate(segments):
+                # Save segment as .wav file
+                segment_filename = path_mel_spec_file + "__segment" + str(idx) + ".wav"
+                sf.write(segment_filename, segment, config.sampling_rate)
+
+        except BaseException:
+            print("Error: Skipping file " + file + " due to a runtime error.")
+            continue
+
+    print('---------------------------------------------')
+    print('Finished segmenting audio files.')
     print('---------------------------------------------')
 
 

@@ -11,6 +11,7 @@ DATA_PATH = "G:/"
 RAW_DATA_PATH = os.path.join(DATA_PATH, 'raw') # Raw Data Directory
 PROCESSED_DATA_PATH = os.path.join(DATA_PATH, 'processed') # Processed Data Directory
 NORMALIZED_MEL_SPEC_PATH = os.path.join(PROCESSED_DATA_PATH, 'normalized')
+SEGMENTED_WAV_PATH = os.path.join(PROCESSED_DATA_PATH, 'segmented_wav')
 METADATA_FILE = os.path.join(RAW_DATA_PATH, 'state_labels.csv') # Metadata File
 PROCESSED_METADATA_FILE = os.path.join(PROCESSED_DATA_PATH, 'bee_hive_metadata.npy') # Processed Metadata File
 PROCESSED_METADATA_FILE_SEGMENTED = os.path.join(PROCESSED_DATA_PATH, 'bee_hive_metadata_segmented.npy') # Processed Metadata File
