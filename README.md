@@ -1,4 +1,4 @@
-# Project: Predicting the health of bee colonies based on audio
+# Project: Predicting the presence of queen bees in bee colonies based on audio data
 
 This repository provides the code for the project as part of the ‘Audio Data Science’ module at Düsseldorf University of Applied Sciences. The aim of the study is to determine the health of bee colonies based on the presence of a queen bee using audio recordings and machine learning. The analyses and processing carried out here are based on the work of Nolasco et al. [\[1\]](#Nolasco19). The corresponding data set is available online on [Zenodo](https://zenodo.org/records/2667806) (accessed on 2024-09-24).
 
